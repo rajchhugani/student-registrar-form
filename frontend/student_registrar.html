@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registrar (MySQL Project)</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <!-- Load Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .nav-btn { @apply px-4 py-2 font-medium text-sm rounded-md transition-colors; }
+        .nav-btn.active { @apply bg-blue-600 text-white; }
+        .nav-btn.inactive { @apply bg-white text-gray-700 hover:bg-gray-100; }
+        .page-section { display: none; }
+    </style>
+</head>
+<body class="h-full font-sans antialiased">
+    <div class="flex flex-col min-h-screen">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Student Registration System</h1>
+                        <p class="text-sm text-gray-500">RDBMS Project (MySQL + Node.js)</p>
+                    </div>
+                    <!-- Navigation Bar -->
+                    <nav class="space-x-2">
+                        <button id="navAddStudent" class="nav-btn inactive">Add Student</button>
+                        <button id="navViewStudents" class="nav-btn active">View Students</button>
+                        <button id="navManageData" class="nav-btn inactive">Manage Data</button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                
+                <p id="auth-status" class="text-center text-gray-500 mb-4">Connecting to backend server...</p>
+
+                <!-- PAGE 1: ADD STUDENT (Insert/Update) -->
+                <div id="pageAddStudent" class="page-section space-y-8">
+                    <div class="max-w-2xl mx-auto">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 id="studentFormTitle" class="text-xl font-semibold mb-4 text-gray-800">Register New Student</h2>
+                            <form id="studentForm" class="space-y-4">
+                                <!-- This hidden input stores the ID when we are editing -->
+                                <input type="hidden" id="studentId">
+                                <div>
+                                    <label for="studentName" class="block text-sm font-medium text-gray-700">Student Name</label>
+                                    <input type="text" id="studentName" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="e.g., Alice Johnson">
+                                </div>
+                                <div>
+                                    <label for="studentAdvisor" class="block text-sm font-medium text-gray-700">Assign Advisor</label>
+                                    <select id="studentAdvisor" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        <option value="">Select an advisor...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Enroll in Courses</label>
+                                    <div id="studentCoursesChecklist" class="mt-2 space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                        <p class="text-gray-400">Loading courses...</p>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-4">
+                                    <button type="submit" id="studentSaveButton" class="px-5 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700">Save Student</button>
+
+                                    <button type="button" id="studentCancelButton" class="px-5 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 hidden">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE 2: VIEW STUDENTS (View/Update/Delete) -->
+                <div id="pageViewStudents" class="page-section space-y-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-800">View All Students (Joined View)</h2>
+                        <div id="studentList" class="space-y-4">
+                            <p id="studentLoadingMessage" class="text-gray-500">Loading students...</p>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- PAGE 3: MANAGE DATA (Faculty & Courses) -->
+                <div id="pageManageData" class="page-section grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Manage Faculty -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-800">Manage Faculty</h2>
+                        <form id="facultyForm" class="space-y-4">
+                            <div>
+                                <label for="facultyName" class="block text-sm font-medium text-gray-700">Faculty Name</label>
+                                <input type="text" id="facultyName" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="e.g., Dr. Smith">
+                            </div>
+                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Add Faculty</button>
+                        </form>
+                        <hr class="my-6">
+                        <h3 class="font-semibold mb-2">Faculty List</h3>
+                        <div id="facultyList" class="space-y-2 max-h-48 overflow-y-auto">
+                            <p class="text-gray-400">Loading...</p>
+                        </div>
+                    </div>
+
+                    <!-- Manage Courses -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-800">Manage Courses</h2>
+                        <form id="courseForm" class="space-y-4">
+                            <div>
+                                <label for="courseTitle" class="block text-sm font-medium text-gray-700">Course Title</label>
+                                <input type="text" id="courseTitle" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="e.g., Database Systems">
+                            </div>
+                            <div>
+                                <label for="courseFaculty" class="block text-sm font-medium text-gray-700">Assign Faculty</label>
+                                <select id="courseFaculty" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="">Select a professor...</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Add Course</button>
+                        </form>
+                        <hr class="my-6">
+                        <h3 class="font-semibold mb-2">Course List (JOINED with Faculty)</h3>
+                        <div id="courseList" class="space-y-2 max-h-48 overflow-y-auto">
+                            <p class="text-gray-400">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Plain JavaScript, no Firebase -->
+    <script>
+        // --- 1. CONFIGURATION ---
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        // DOM Elements
+        const authStatus = document.getElementById('auth-status');
+        
+        // --- Navigation Elements ---
+        const navAddStudent = document.getElementById('navAddStudent');
+        const navViewStudents = document.getElementById('navViewStudents');
+        const navManageData = document.getElementById('navManageData');
+        const pageAddStudent = document.getElementById('pageAddStudent');
+        const pageViewStudents = document.getElementById('pageViewStudents');
+        const pageManageData = document.getElementById('pageManageData');
+        const navButtons = [navAddStudent, navViewStudents, navManageData];
+        const pageSections = [pageAddStudent, pageViewStudents, pageManageData];
+
+        // Faculty Elements
+        const facultyForm = document.getElementById('facultyForm');
+        const facultyNameInput = document.getElementById('facultyName');
+        const facultyList = document.getElementById('facultyList');
+        const courseFacultySelect = document.getElementById('courseFaculty');
+        const studentAdvisorSelect = document.getElementById('studentAdvisor');
+
+        // Course Elements
+        const courseForm = document.getElementById('courseForm');
+        const courseTitleInput = document.getElementById('courseTitle');
+        const courseList = document.getElementById('courseList');
+        const studentCoursesChecklist = document.getElementById('studentCoursesChecklist');
+
+        // Student Elements
+        const studentForm = document.getElementById('studentForm');
+        const studentFormTitle = document.getElementById('studentFormTitle');
+        const studentId = document.getElementById('studentId');
+        const studentNameInput = document.getElementById('studentName');
+        const studentSaveButton = document.getElementById('studentSaveButton');
+        const studentCancelButton = document.getElementById('studentCancelButton');
+        const studentList = document.getElementById('studentList');
+        const studentLoadingMessage = document.getElementById('studentLoadingMessage');
+
+
+        // --- 2. NAVIGATION ---
+        function showPage(pageIdToShow) {
+            pageSections.forEach(page => { page.style.display = 'none'; });
+            const pageToShow = document.getElementById(pageIdToShow);
+            if (pageToShow) {
+                pageToShow.style.display = (pageIdToShow === 'pageManageData') ? 'grid' : 'block';
+            }
+            navButtons.forEach(btn => { btn.classList.add('inactive'); btn.classList.remove('active'); });
+            
+            if (pageIdToShow === 'pageAddStudent') navAddStudent.classList.add('active');
+            else if (pageIdToShow === 'pageViewStudents') navViewStudents.classList.add('active');
+            else if (pageIdToShow === 'pageManageData') navManageData.classList.add('active');
+        }
+        navAddStudent.addEventListener('click', () => { resetStudentForm(); showPage('pageAddStudent'); });
+        navViewStudents.addEventListener('click', () => showPage('pageViewStudents'));
+        navManageData.addEventListener('click', () => showPage('pageManageData'));
+
+
+        // --- 3. INITIALIZATION ---
+        async function initializeApp() {
+            try {
+                // Check if backend is responding by fetching faculty
+                const response = await fetch(API_BASE_URL + '/faculty');
+                if (!response.ok) throw new Error('Backend not responding');
+                
+                authStatus.textContent = 'Connected to Backend Server!';
+                
+                // Load all data
+                await loadFaculty();
+                await loadCourses();
+                await loadStudents();
+                
+                // Show the default page
+                showPage('pageViewStudents');
+            } catch (error) {
+                console.error('Failed to connect to backend:', error);
+                authStatus.textContent = 'Error: Could not connect to backend server. Is it running?';
+            }
+        }
+        
+        // --- 4. "TABLE" FUNCTIONS (FACULTY) ---
+        async function loadFaculty() {
+            try {
+                const response = await fetch(API_BASE_URL + '/faculty');
+                const facultyData = await response.json();
+                
+                facultyList.innerHTML = ''; 
+                const facultyOptions = ['<option value="">Select an option...</option>'];
+
+                facultyData.forEach(faculty => {
+                    facultyList.appendChild(createListItem(faculty.name, faculty.faculty_id, deleteFaculty));
+                    facultyOptions.push(`<option value="${faculty.faculty_id}">${escapeHTML(faculty.name)}</option>`);
+                });
+
+                if (facultyData.length === 0) facultyList.innerHTML = '<p class="text-gray-400">No faculty added yet.</p>';
+                
+                // Update ALL dropdowns that use faculty
+                courseFacultySelect.innerHTML = facultyOptions.join('');
+                studentAdvisorSelect.innerHTML = facultyOptions.join('');
+            } catch (err) { console.error("Error loading faculty:", err); }
+        }
+
+        facultyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = facultyNameInput.value;
+            if (!name) return;
+            try {
+                await fetch(API_BASE_URL + '/faculty', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                facultyForm.reset();
+                await loadFaculty(); // Reload the list
+            } catch (error) { console.error("Error adding faculty:", error); }
+        });
+
+        async function deleteFaculty(id) {
+            if (!confirm("Delete this faculty member? This may fail if they are assigned to courses or students.")) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/faculty/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message);
+                }
+                await loadFaculty(); // Reload
+            } catch (error) { 
+                console.error("Error deleting faculty:", error);
+                // We use a custom modal or alert here in a real app
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // --- 5. "TABLE" FUNCTIONS (COURSES) ---
+        async function loadCourses() {
+            try {
+                const response = await fetch(API_BASE_URL + '/courses');
+                const courseData = await response.json();
+                
+                courseList.innerHTML = '';
+                const courseChecklistOptions = [];
+
+                courseData.forEach(course => {
+                    const displayText = `<strong>${escapeHTML(course.title)}</strong> (Prof: ${escapeHTML(course.faculty_name || 'N/A')})`;
+                    courseList.appendChild(createListItem(displayText, course.course_id, deleteCourse, true));
+
+                    courseChecklistOptions.push(`
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" class="student-course-check" value="${course.course_id}">
+                            <span>${escapeHTML(course.title)}</span>
+                        </label>
+                    `);
+                });
+
+                if (courseData.length === 0) {
+                    courseList.innerHTML = '<p class="text-gray-400">No courses added yet.</p>';
+                    studentCoursesChecklist.innerHTML = '<p class="text-gray-400">Please add courses first.</p>';
+                } else {
+                    studentCoursesChecklist.innerHTML = courseChecklistOptions.join('');
+                }
+            } catch (err) { console.error("Error loading courses:", err); }
+        }
+
+        courseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = courseTitleInput.value;
+            const facultyId = courseFacultySelect.value;
+            if (!title || !facultyId) {
+                alert("Please select a title and faculty.");
+                return;
+            }
+            try {
+                await fetch(API_BASE_URL + '/courses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, facultyId })
+                });
+                courseForm.reset();
+                await loadCourses(); // Reload
+            } catch (error) { console.error("Error adding course:", error); }
+        });
+
+        async function deleteCourse(id) {
+            if (!confirm("Delete this course? This may fail if students are enrolled in it.")) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/courses/${id}`, { method: 'DELETE' });
+                 if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message);
+                }
+                await loadCourses(); // Reload
+            } catch (error) { 
+                console.error("Error deleting course:", error); 
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // --- 6. "MAIN TABLE" FUNCTIONS (STUDENTS) ---
+        async function loadStudents() {
+            try {
+                const response = await fetch(API_BASE_URL + '/students');
+                const studentData = await response.json();
+
+                studentList.innerHTML = '';
+                if (studentData.length === 0) {
+                    studentList.innerHTML = '<p class="text-gray-500">No students registered yet.</p>';
+                }
+
+                studentData.forEach(student => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-semibold text-lg text-blue-800">${escapeHTML(student.student_name)}</h3>
+                                <p class="text-sm text-gray-600"><strong>Advisor:</strong> ${escapeHTML(student.advisor_name || 'N/A')}</p>
+                                <p class="text-sm text-gray-600"><strong>Courses:</strong> 
+                                    ${escapeHTML(student.courses || 'None')}
+                                </p>
+                            </div>
+                            <div class="flex-shrink-0 space-x-2">
+                                <button data-id="${student.student_id}" class="edit-student-btn px-3 py-1 bg-yellow-400 text-yellow-900 rounded-md text-sm">Edit (Update)</button>
+                                <button data-id="${student.student_id}" class="delete-student-btn px-3 py-1 bg-red-500 text-white rounded-md text-sm">Delete</button>
+
+                            </div>
+                        </div>
+                    `;
+                    studentList.appendChild(card);
+                });
+
+                // Add event listeners after cards are created
+                studentList.querySelectorAll('.edit-student-btn').forEach(btn => {
+                    btn.addEventListener('click', () => populateStudentFormForEdit(btn.dataset.id));
+                });
+                studentList.querySelectorAll('.delete-student-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteStudent(btn.dataset.id));
+                });
+
+                studentLoadingMessage.style.display = 'none';
+            } catch (err) {
+                console.error("Error loading students:", err);
+                studentLoadingMessage.textContent = 'Error loading students from backend.';
+            }
+        }
+
+        studentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const selectedCourseIds = [];
+            document.querySelectorAll('.student-course-check:checked').forEach(checkbox => {
+                selectedCourseIds.push(checkbox.value);
+            });
+
+            const data = {
+                name: studentNameInput.value,
+                advisorId: studentAdvisorSelect.value || null,
+                courseIds: selectedCourseIds
+            };
+
+            const currentStudentId = studentId.value;
+            studentSaveButton.disabled = true;
+
+            try {
+                let url = API_BASE_URL + '/students';
+                let method = 'POST';
+
+                if (currentStudentId) {
+                    // --- This is an UPDATE ---
+                    url = `${API_BASE_URL}/students/${currentStudentId}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message);
+                }
+                
+                resetStudentForm();
+                showPage('pageViewStudents');
+                await loadStudents(); // Reload the student list
+            } catch (error) {
+                console.error("Error saving student:", error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                studentSaveButton.disabled = false;
+            }
+        });
+
+        async function deleteStudent(id) {
+            if (!confirm("Delete this student? This action cannot be undone.")) return;
+            try {
+                await fetch(`${API_BASE_URL}/students/${id}`, { method: 'DELETE' });
+                await loadStudents(); // Reload the list
+            } catch (error) { console.error("Error deleting student:", error); }
+        }
+
+        async function populateStudentFormForEdit(id) {
+            try {
+                // 1. Fetch the single student's full data
+                const response = await fetch(`${API_BASE_URL}/students/${id}`);
+                const student = await response.json();
+
+                // 2. Populate the form
+                studentId.value = student.student_id;
+                studentNameInput.value = student.name;
+                studentAdvisorSelect.value = student.advisor_id || '';
+                
+                document.querySelectorAll('.student-course-check').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                if (student.courseIds && Array.isArray(student.courseIds)) {
+                    student.courseIds.forEach(courseId => {
+                        const checkbox = document.querySelector(`.student-course-check[value="${courseId}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                }
+
+                // 3. Change form to "Update" mode
+                studentFormTitle.textContent = 'Update Student Information';
+                studentSaveButton.textContent = 'Update Student';
+                studentCancelButton.classList.remove('hidden');
+                
+                // 4. Switch to the form page
+                showPage('pageAddStudent');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (error) {
+                console.error("Error fetching student details:", error);
+            }
+        }
+
+        function resetStudentForm() {
+            studentForm.reset();
+            studentId.value = ''; // Clear the hidden ID
+            document.querySelectorAll('.student-course-check:checked').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            studentFormTitle.textContent = 'Register New Student';
+            studentSaveButton.textContent = 'Save Student';
+            studentCancelButton.classList.add('hidden');
+        }
+        
+        studentCancelButton.addEventListener('click', () => {
+            resetStudentForm();
+            showPage('pageViewStudents');
+        });
+
+        // --- 7. UTILITY FUNCTIONS ---
+        function createListItem(innerHTML, id, deleteFn, useInnerHTML = false) {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded';
+            const text = document.createElement('span');
+            if (useInnerHTML) text.innerHTML = innerHTML;
+            else text.textContent = innerHTML;
+            div.appendChild(text);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'text-xs text-red-600 hover:text-red-800';
+            deleteBtn.onclick = () => deleteFn(id);
+            div.appendChild(deleteBtn);
+            return div;
+        }
+        
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return str.toString().replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        // --- 8. START THE APP ---
+        initializeApp();
+
+    </script>
+</body>
+</html>
